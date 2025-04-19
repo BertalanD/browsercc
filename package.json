@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "description": "Compile C/C++ programs in your browser to WebAssembly",
   "main": "dist/index.js",
+  "type": "module",
   "scripts": {
     "build:container": "docker build -t browsercc_builder .",
     "build:wasm": "docker run -v $(pwd)/dist:/dist -v $(pwd)/build.sh:/build.sh -e BROWSERCC_DIST=/dist -w /build -t browsercc_builder /build.sh",
@@ -12,6 +13,18 @@
   },
   "author": "Daniel Bertalan <dani@danielbertalan.dev>",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/BertalanD/browsercc.git"
+  },
+  "homepage": "https://github.com/BertalanD/browsercc#readme",
+  "keywords": [
+    "wasm",
+    "webassembly",
+    "c++",
+    "c",
+    "compiler"
+  ],
   "devDependencies": {
     "typescript": "^5.8.3"
   },
