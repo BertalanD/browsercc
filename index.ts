@@ -3,7 +3,7 @@ import LLD from "./lld.js";
 
 export { Clang, LLD };
 
-export type FileList = Record<string, string | ArrayBuffer>;
+export type FileList = { [fileName: string]: string | ArrayBuffer };
 
 export type CompilationJob = {
   source: string;
