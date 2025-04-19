@@ -43,8 +43,8 @@ We try to optimize the artifact size as much as possible (except LTO, blocked on
 
 ## Example
 
-The `demo.html` file contains a simple [Compiler Explorer](https://godbolt.org/) like interface for compiling C/C++ programs.
-To run it, execute `npm run demo` and open `demo.html` from the link printed in the console.
+The `index.html` file contains a simple [Compiler Explorer](https://godbolt.org/)-like interface for compiling C/C++ programs.
+To run it, execute `npm run demo` and open the link printed in the console. If you open the `localhost` link, it will use your local build, otherwise it will load the pre-built NPM package from a CDN.
 
 The bare minimum to compile and run a C++ program is:
 
