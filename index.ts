@@ -197,3 +197,14 @@ export async function compile({
     module: await WebAssembly.compile(output),
   };
 }
+
+const compatibleWithPCH = (flags: string[]) =>
+  flags.includes("-O2") &&
+  flags.includes("-std=c++20") &&
+  flags.includes("-fno-exceptions");
+
+// FIXME: Make PCH flags configurable.
+export const getPrecompiledHeader = async (flags: string[]) =>
+  compatibleWithPCH(flags)
+    ? (await fetch(new URL("stdc++.h.pch", import.meta.url).href)).arrayBuffer()
+    : null;
