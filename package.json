@@ -1,0 +1,25 @@
+{
+  "name": "browsercc",
+  "version": "0.1.0",
+  "description": "Compile and run C/C++ code in your browser with WASM",
+  "main": "dist/index.js",
+  "scripts": {
+    "build:container": "docker build -t browsercc_builder .",
+    "build:wasm": "docker run -v $(pwd)/dist:/dist -v $(pwd)/build.sh:/build.sh -e BROWSERCC_DIST=/dist -w /build -t browsercc_builder /build.sh",
+    "build:js": "tsc",
+    "build:pch": "docker run -v $(pwd)/dist:/dist -v $(pwd):/repo:ro  -w /dist -t browsercc_builder node /repo/build-pch.mjs -O2 -std=c++20 -fno-exceptions",
+    "build": "npm run build:container && npm run build:wasm && npm run build:js"
+  },
+  "author": "Daniel Bertalan <dani@danielbertalan.dev>",
+  "license": "ISC",
+  "devDependencies": {
+    "typescript": "^5.8.3"
+  },
+  "files": [
+    "dist"
+  ],
+  "browser": {
+    "module": false,
+    "fs": false
+  }
+}

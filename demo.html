@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>browsercc demo</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        background-color: color-mix(in srgb, Canvas, CanvasText 2.5%);
+        color: color-mix(in srgb, CanvasText, Canvas 15%);
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+        padding: 10px;
+      }
+
+      .editor-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+        flex: 1;
+      }
+
+      .editor-col {
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        gap: 10px;
+      }
+
+      .cm-editor {
+        height: 100%;
+        width: 100%;
+      }
+    </style>
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/xterm/css/xterm.css"
+    />
+    <meta name="color-scheme" content="light dark" />
+  </head>
+  <body>
+    <div>
+      <h1 style="display: inline-block">
+        browsercc &ndash; Compile and run C/C++ code in your browser
+      </h1>
+      <button id="run" style="float: right; margin: 10px">Run</button>
+    </div>
+
+    <div class="editor-grid">
+      <div class="editor-col editor" id="editor" class="editor"></div>
+      <div class="editor-col">
+        <div style="display: flex">
+          <label for="flags">Compile flags:</label>
+          <input
+            id="flags"
+            type="text"
+            value="-O2 -Wall -Wextra -std=c++20 -DONLINE_JUDGE -fdiagnostics-color=always -fno-exceptions"
+            style="margin-left: 5px; display: inline-block; flex: 1"
+          />
+        </div>
+        <div id="input" class="editor" style="height: 50%; width: 100%"></div>
+        <div id="output" style="height: 50%; width: 100%"></div>
+      </div>
+    </div>
+
+    <script type="importmap">
+      {
+        "imports": {
+          "@codemirror/": "https://esm.sh/*@codemirror/",
+          "@lezer/": "https://esm.sh/*@lezer/",
+          "@marijn/find-cluster-break": "https://esm.sh/@marijn/find-cluster-break",
+          "@xterm/": "https://esm.sh/*@xterm/",
+          "codemirror": "https://esm.sh/*codemirror",
+          "crelt": "https://esm.sh/crelt",
+          "style-mod": "https://esm.sh/style-mod",
+          "w3c-keyname": "https://esm.sh/w3c-keyname",
+          "@bjorn3/browser_wasi_shim": "https://esm.sh/@bjorn3/browser_wasi_shim"
+        }
+      }
+    </script>
+    <script type="module">
+      import {
+        WASI,
+        File,
+        OpenFile,
+        ConsoleStdout,
+      } from "@bjorn3/browser_wasi_shim";
+
+      import { basicSetup, EditorView } from "codemirror";
+      import { Compartment } from "@codemirror/state";
+      import { cpp } from "@codemirror/lang-cpp";
+      import { oneDark } from "@codemirror/theme-one-dark";
+      import { Terminal } from "@xterm/xterm";
+      import { FitAddon } from "@xterm/addon-fit";
+
+      import { compile } from "./dist/index.js";
+
+      let theme = new Compartment();
+
+      const code = new EditorView({
+        doc: `#include <iostream>
+#include <string>
+
+int main() {
+  std::string name;
+  std::cin >> name;
+  std::cout << "Hello, " << name << "!\\n";
+  return 0;
+}`,
+        parent: document.getElementById("editor"),
+        extensions: [basicSetup, cpp(), theme.of([])],
+      });
+
+      const input = new EditorView({
+        doc: "browsercc-demo",
+        parent: document.getElementById("input"),
+        extensions: [basicSetup, theme.of([])],
+      });
+
+      const setColorScheme = (dark) => {
+        [code, input].map((editor) => {
+          editor.dispatch({
+            effects: theme.reconfigure(dark ? [oneDark] : []),
+          });
+        });
+      };
+
+      const query = window.matchMedia("(prefers-color-scheme: dark)");
+      setColorScheme(query.matches);
+      query.addEventListener("change", (event) => {
+        setColorScheme(event.matches);
+      });
+
+      const terminal = new Terminal();
+      const fitAddon = new FitAddon();
+      terminal.loadAddon(fitAddon);
+      terminal.open(document.getElementById("output"));
+      fitAddon.fit();
+      addEventListener("resize", () => fitAddon.fit());
+
+      const pch = await (await fetch("./dist/stdc++.h.pch")).arrayBuffer();
+
+      document.getElementById("run").addEventListener("click", async () => {
+        const flags = document.getElementById("flags").value.split(" ");
+
+        console.time("compile");
+        const { module, compileOutput } = await compile({
+          source: code.state.doc.toString(),
+          fileName: "test.cpp",
+          flags: [...flags, "-include-pch", "/include/bits/stdc++.h.pch"],
+          extraFiles: {
+            "/include/bits/stdc++.h.pch": pch,
+          },
+        });
+        console.timeEnd("compile");
+
+        terminal.write(`$ cc ${flags.join(" ")} test.cpp\n\r`);
+        terminal.write(compileOutput.replace(/\n/g, "\n\r"));
+
+        console.log(WebAssembly.Module.imports(module));
+
+        const stdin = new TextEncoder("utf-8").encode(
+          input.state.doc.toString()
+        );
+        terminal.write("$ ./a.out\n\r");
+
+        console.time("execute");
+        const args = [];
+        const env = [];
+        const printer = (data) => {
+          const str = new TextDecoder("utf-8")
+            .decode(data)
+            .replace(/\n/g, "\n\r");
+          terminal.write(str);
+        };
+        const fds = [
+          new OpenFile(new File(stdin)),
+          new ConsoleStdout(printer),
+          new ConsoleStdout(printer),
+        ];
+        const wasi = new WASI(args, env, fds);
+        const instance = await WebAssembly.instantiate(module, {
+          wasi_snapshot_preview1: wasi.wasiImport,
+        });
+        wasi.start(instance);
+        console.timeEnd("execute");
+      });
+    </script>
+  </body>
+</html>
