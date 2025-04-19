@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-BROWSERCC_DIST="${BROWSERCC_DIST:-$(pwd)}"
+BROWSERCC_DIST="${BROWSERCC_DIST:-$(pwd)/dist}"
 
 echo "Building the LLVM toolchain for WASI..."
     git clone --depth 1 --branch llvmorg-20.1.2 https://github.com/llvm/llvm-project.git
