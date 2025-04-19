@@ -69,7 +69,7 @@
       </div>
     </div>
 
-    <script type="importmap">
+    <script type="text/json+importmap-proto">
       {
         "imports": {
           "@codemirror/": "https://esm.sh/*@codemirror/",
@@ -87,17 +87,23 @@
     <script>
       // Load browsercc locally if running from a local file.
       // See https://github.com/WICG/import-maps/issues/247#issuecomment-802805083
+      const importmap = JSON.parse(
+        document.querySelector('script[type="text/json+importmap-proto"]')
+          .textContent
+      );
+
+      if (location.hostname === "localhost") {
+        console.info("Using local browsercc build");
+        importmap.imports["browsercc"] = "./dist/index.js";
+      } else {
+        console.info("Loading browsercc from CDN");
+        importmap.imports["browsercc"] =
+          "https://cdn.jsdelivr.net/npm/browsercc@0.1.1/dist/index.js";
+      }
+
       const element = document.createElement("script");
       element.type = "importmap";
-      element.textContent = JSON.stringify({
-        imports: {
-          browsercc:
-            location.hostname === "localhost"
-              ? "./dist/index.js"
-              : "https://cdn.jsdelivr.net/npm/browsercc@0.1.1/dist/index.js",
-        },
-      });
-
+      element.textContent = JSON.stringify(importmap);
       document.head.appendChild(element);
     </script>
     <script type="module">
