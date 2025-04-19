@@ -84,6 +84,22 @@
         }
       }
     </script>
+    <script>
+      // Load browsercc locally if running from a local file.
+      // See https://github.com/WICG/import-maps/issues/247#issuecomment-802805083
+      const element = document.createElement("script");
+      element.type = "importmap";
+      element.textContent = JSON.stringify({
+        imports: {
+          browsercc:
+            location.hostname === "localhost"
+              ? "./dist/index.js"
+              : "https://cdn.jsdelivr.net/npm/browsercc@latest/dist/index.js",
+        },
+      });
+
+      document.head.appendChild(element);
+    </script>
     <script type="module">
       import {
         WASI,
@@ -99,20 +115,20 @@
       import { Terminal } from "@xterm/xterm";
       import { FitAddon } from "@xterm/addon-fit";
 
-      import { compile } from "./dist/index.js";
+      import { compile, getPrecompiledHeader } from "browsercc";
 
       let theme = new Compartment();
 
       const code = new EditorView({
         doc: `#include <iostream>
-#include <string>
+      #include <string>
 
-int main() {
-  std::string name;
-  std::cin >> name;
-  std::cout << "Hello, " << name << "!\\n";
-  return 0;
-}`,
+      int main() {
+        std::string name;
+        std::cin >> name;
+        std::cout << "Hello, " << name << "!\\n";
+        return 0;
+      }`,
         parent: document.getElementById("editor"),
         extensions: [basicSetup, cpp(), theme.of([])],
       });
@@ -144,19 +160,24 @@ int main() {
       fitAddon.fit();
       addEventListener("resize", () => fitAddon.fit());
 
-      const pch = await (await fetch("./dist/stdc++.h.pch")).arrayBuffer();
-
       document.getElementById("run").addEventListener("click", async () => {
         const flags = document.getElementById("flags").value.split(" ");
+
+        const maybePCH = await getPrecompiledHeader(flags);
+        let extraFiles = {};
+        if (maybePCH !== null) {
+          flags.push("-include-pch", "/include/bits/stdc++.h.pch");
+          extraFiles = {
+            "/include/bits/stdc++.h.pch": maybePCH,
+          };
+        }
 
         console.time("compile");
         const { module, compileOutput } = await compile({
           source: code.state.doc.toString(),
           fileName: "test.cpp",
-          flags: [...flags, "-include-pch", "/include/bits/stdc++.h.pch"],
-          extraFiles: {
-            "/include/bits/stdc++.h.pch": pch,
-          },
+          flags,
+          extraFiles,
         });
         console.timeEnd("compile");
 
