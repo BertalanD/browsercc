@@ -8,7 +8,7 @@ While WASI lacks some features like C++ exceptions and threading support, it req
 
 ## Usage
 
-The NPM release of `browsercc` contains a precompiled toolchain, but you can also build it yourself with `npm run build`. This uses Docker to create a Linux container with the necessary dependencies, and then calls `build.sh` to compile the toolchain.
+The [NPM release](https://www.npmjs.com/package/browsercc) of `browsercc` contains a precompiled toolchain, but you can also build it yourself with `npm run build`. This uses Docker to create a Linux container with the necessary dependencies, and then calls `build.sh` to compile the toolchain.
 
 `browsercc` provides a JavaScript function for compiling source code given as a string to a WebAssembly module:
 
@@ -44,6 +44,7 @@ We try to optimize the artifact size as much as possible (except LTO, blocked on
 ## Example
 
 The `demo.html` file contains a simple [Compiler Explorer](https://godbolt.org/) like interface for compiling C/C++ programs.
+To run it, execute `npm run demo` and open `demo.html` from the link printed in the console.
 
 The bare minimum to compile and run a C++ program is:
 
